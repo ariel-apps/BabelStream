@@ -146,7 +146,7 @@ endif ()
 include(cmake/register_models.cmake)
 
 # register out models <model_name> <preprocessor_def_name> <source files...>
-register_model(omp OMP OMPStream.cpp)
+register_model(omp OMP OMPStream.cpp src/omp/arielapi.c)
 register_model(ocl OCL OCLStream.cpp)
 register_model(std-data STD_DATA STDDataStream.cpp)
 register_model(std-indices STD_INDICES STDIndicesStream.cpp)
@@ -229,7 +229,7 @@ message(STATUS "Executable  : ${EXE_NAME}")
 include_directories(src)
 add_executable(${EXE_NAME} ${IMPL_SOURCES} src/main.cpp)
 target_link_libraries(${EXE_NAME} PUBLIC ${LINK_LIBRARIES})
-target_compile_definitions(${EXE_NAME} PUBLIC ${IMPL_DEFINITIONS})
+target_compile_definitions(${EXE_NAME} PUBLIC ${IMPL_DEFINITIONS} "-DARIELAPI_DISABLE_OUTPUT")
 target_include_directories(${EXE_NAME} PUBLIC ${IMPL_DIRECTORIES})
 
 if (CXX_EXTRA_LIBRARIES)

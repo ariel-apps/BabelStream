@@ -8,6 +8,8 @@
 #include <cstdlib>  // For aligned_alloc
 #include "OMPStream.h"
 
+#include "arielapi.h"
+
 #ifndef ALIGNMENT
 #define ALIGNMENT (2*1024*1024) // 2MB
 #endif
@@ -101,6 +103,10 @@ void OMPStream<T>::read_arrays(std::vector<T>& h_a, std::vector<T>& h_b, std::ve
 template <class T>
 void OMPStream<T>::copy()
 {
+
+  ariel_output_stats();
+  ariel_enable();
+
 #ifdef OMP_TARGET_GPU
   int array_size = this->array_size;
   T *a = this->a;
@@ -118,6 +124,10 @@ void OMPStream<T>::copy()
   // a small copy to ensure blocking so that timing is correct
   #pragma omp target update from(a[0:0])
   #endif
+
+  ariel_disable();
+  ariel_output_stats();
+
 }
 
 template <class T>
