@@ -6,6 +6,9 @@ endif ()
 
 project(BabelStream VERSION 5.0 LANGUAGES CXX C)
 
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
+find_package(PAPI REQUIRED)
+
 # uncomment for debugging build issues:
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
