@@ -7,7 +7,21 @@ endif ()
 project(BabelStream VERSION 5.0 LANGUAGES CXX C)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
-find_package(PAPI REQUIRED)
+
+option(ENABLE_PAPI "Enable PAPI integration" FALSE)
+option(ENABLE_ARIELAPI "Enable Ariel API integration" FALSE)
+
+if (ENABLE_PAPI)
+    find_package(PAPI REQUIRED)
+endif ()
+
+if (ENABLE_ARIELAPI)
+    find_package(arielapi REQUIRED)
+    list(APPEND LINK_LIBRARIES_ARIEL arielapi)
+    list(APPEND IMPL_DIR_ARIEL ${ARIELAPI_INCLUDE_DIR})
+    list(APPEND IMPL_DEF_ARIEL "-DUSE_ARIELAPI")
+    list(APPEND LINK_FLAGS_ARIEL "-L${ARIELAPI_LIBDIR}")
+endif ()
 
 # uncomment for debugging build issues:
 #set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -149,7 +163,7 @@ endif ()
 include(cmake/register_models.cmake)
 
 # register out models <model_name> <preprocessor_def_name> <source files...>
-register_model(omp OMP OMPStream.cpp src/omp/arielapi.c)
+register_model(omp OMP OMPStream.cpp)
 register_model(ocl OCL OCLStream.cpp)
 register_model(std-data STD_DATA STDDataStream.cpp)
 register_model(std-indices STD_INDICES STDIndicesStream.cpp)
@@ -231,9 +245,9 @@ message(STATUS "Executable  : ${EXE_NAME}")
 
 include_directories(src)
 add_executable(${EXE_NAME} ${IMPL_SOURCES} src/main.cpp)
-target_link_libraries(${EXE_NAME} PUBLIC ${LINK_LIBRARIES})
-target_compile_definitions(${EXE_NAME} PUBLIC ${IMPL_DEFINITIONS} "-DARIELAPI_DISABLE_OUTPUT")
-target_include_directories(${EXE_NAME} PUBLIC ${IMPL_DIRECTORIES})
+target_link_libraries(${EXE_NAME} PUBLIC ${LINK_LIBRARIES} ${LINK_LIBRARIES_ARIEL})
+target_compile_definitions(${EXE_NAME} PUBLIC ${IMPL_DEFINITIONS} ${IMPL_DEF_ARIEL})
+target_include_directories(${EXE_NAME} PUBLIC ${IMPL_DIRECTORIES} ${IMPL_DIR_ARIEL})
 
 if (CXX_EXTRA_LIBRARIES)
     target_link_libraries(${EXE_NAME} PUBLIC ${CXX_EXTRA_LIBRARIES})
@@ -243,7 +257,7 @@ target_compile_options(${EXE_NAME} PUBLIC "$<$<CONFIG:Release>:${ACTUAL_RELEASE_
 target_compile_options(${EXE_NAME} PUBLIC "$<$<CONFIG:Debug>:${ACTUAL_DEBUG_FLAGS};${CXX_EXTRA_FLAGS}>")
 
 target_link_options(${EXE_NAME} PUBLIC LINKER:${CXX_EXTRA_LINKER_FLAGS})
-target_link_options(${EXE_NAME} PUBLIC ${LINK_FLAGS} ${CXX_EXTRA_LINK_FLAGS})
+target_link_options(${EXE_NAME} PUBLIC ${LINK_FLAGS} ${CXX_EXTRA_LINK_FLAGS} ${LINK_FLAGS_ARIEL})
 
 # some models require the target to be already specified so they can finish their setup here
 # this only happens if the model.cmake definition contains the `setup_target` macro

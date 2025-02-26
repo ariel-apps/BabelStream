@@ -8,7 +8,9 @@
 #include <cstdlib>  // For aligned_alloc
 #include "OMPStream.h"
 
+#ifdef USE_ARIELAPI
 #include "arielapi.h"
+#endif
 
 #ifndef ALIGNMENT
 #define ALIGNMENT (2*1024*1024) // 2MB
@@ -104,8 +106,10 @@ template <class T>
 void OMPStream<T>::copy()
 {
 
+#ifdef USE_ARIELAPI
   ariel_output_stats();
   ariel_enable();
+#endif
 
 #ifdef OMP_TARGET_GPU
   int array_size = this->array_size;
@@ -125,8 +129,10 @@ void OMPStream<T>::copy()
   #pragma omp target update from(a[0:0])
   #endif
 
+#ifdef USE_ARIELAPI
   ariel_disable();
   ariel_output_stats();
+#endif
 
 }
 
