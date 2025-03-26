@@ -1,3 +1,20 @@
+# SST Notes
+This section contains information specific to the SST fork of BabelStream. The original
+README is below.
+
+## ArielAPI
+- This package has support for Ariel markers. Currently, they are only around the OpenMP
+copy kernel. Support for more kernels will be added in the future.
+- To build with Ariel API support, configure with `-DENABLE_ARIEL`.
+
+## PAPI
+- We have added support for PAPI counters to the OpenMP version of this code. To build,
+configure with `-DENABLE_PAPI` and *make sure to run* `make install`. Spack does not
+put `libpapi.so` on `LD_LIBRARY_PATH`, meaning `ld` will not be able to find
+it. To fix this, we put the location of the library in the executable's `RPATH`, but
+the `RPATH` is only set when installing.
+
+The original README follows.
 # BabelStream
 
 <img src="babelstream.png?raw=true" alt="logo" height="300" align="right" />
