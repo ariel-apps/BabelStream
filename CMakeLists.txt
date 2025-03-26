@@ -13,14 +13,19 @@ option(ENABLE_ARIELAPI "Enable Ariel API integration" FALSE)
 
 if (ENABLE_PAPI)
     find_package(PAPI REQUIRED)
+    add_compile_definitions(USE_PAPI)
+    list(APPEND LINK_LIBRARIES_EXTERN papi)
+    list(APPEND IMPL_DIR_EXTERN ${PAPI_INCLUDE_DIRS})
+    list(APPEND LINK_FLAGS_EXTERN "-L${PAPI_PREFIX}/lib")
+    list(APPEND CMAKE_INSTALL_RPATH "${PAPI_PREFIX}/lib") # Ensure libpapi is placed in RPATH since Spack doesn't put it in LD_LIBRARY_PATH
 endif ()
 
 if (ENABLE_ARIELAPI)
     find_package(arielapi REQUIRED)
-    list(APPEND LINK_LIBRARIES_ARIEL arielapi)
-    list(APPEND IMPL_DIR_ARIEL ${ARIELAPI_INCLUDE_DIR})
-    list(APPEND IMPL_DEF_ARIEL "-DUSE_ARIELAPI")
-    list(APPEND LINK_FLAGS_ARIEL "-L${ARIELAPI_LIBDIR}")
+    list(APPEND LINK_LIBRARIES_EXTERN arielapi)
+    list(APPEND IMPL_DIR_EXTERN ${ARIELAPI_INCLUDE_DIR})
+    list(APPEND IMPL_DEF_EXTERN "-DUSE_ARIELAPI")
+    list(APPEND LINK_FLAGS_EXTERN "-L${ARIELAPI_LIBDIR}")
 endif ()
 
 # uncomment for debugging build issues:
@@ -229,7 +234,7 @@ endif ()
 message(STATUS "CXX vendor  : ${CMAKE_CXX_COMPILER_ID} (${CMAKE_CXX_COMPILER})")
 message(STATUS "Platform    : ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "Sources     : ${IMPL_SOURCES}")
-message(STATUS "Libraries   : ${LINK_LIBRARIES}")
+message(STATUS "Libraries   : ${LINK_LIBRARIES} ${LINK_LIBRARIES_EXTERN}")
 message(STATUS "CXX Flags   : ${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${ACTUAL_${BUILD_TYPE}_FLAGS} ${CXX_EXTRA_FLAGS}
     CXX flags derived from (CMake + (Override ? Override : Default) + Extras), where:
         CMake                    = `${CMAKE_CXX_FLAGS_${BUILD_TYPE}}`
@@ -237,17 +242,18 @@ message(STATUS "CXX Flags   : ${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${ACTUAL_${BUILD_
         Override (RELEASE_FLAGS) = `${${BUILD_TYPE}_FLAGS}`
         Extras (CXX_EXTRA_FLAGS) = `${CXX_EXTRA_FLAGS}`")
 message(STATUS "Link Flags  : ${LINK_FLAGS} ${CXX_EXTRA_LINK_FLAGS}")
-message(STATUS "Linker Flags: ${CMAKE_EXE_LINKER_FLAGS} ${CXX_EXTRA_LINKER_FLAGS} ")
-message(STATUS "Defs        : ${IMPL_DEFINITIONS}")
+message(STATUS "Linker Flags: ${CMAKE_EXE_LINKER_FLAGS} ${CXX_EXTRA_LINKER_FLAGS} ${LINK_FLAGS_EXTERN}")
+message(STATUS "Defs        : ${IMPL_DEFINITIONS} ${IMPL_DEF_EXTERN}")
+message(STATUS "Include dirs: ${IMPL_DIRECTORIES} ${IMPL_DIR_EXTERN}")
 message(STATUS "Executable  : ${EXE_NAME}")
 
 # below we have all the usual CMake target setup steps
 
 include_directories(src)
 add_executable(${EXE_NAME} ${IMPL_SOURCES} src/main.cpp)
-target_link_libraries(${EXE_NAME} PUBLIC ${LINK_LIBRARIES} ${LINK_LIBRARIES_ARIEL})
-target_compile_definitions(${EXE_NAME} PUBLIC ${IMPL_DEFINITIONS} ${IMPL_DEF_ARIEL})
-target_include_directories(${EXE_NAME} PUBLIC ${IMPL_DIRECTORIES} ${IMPL_DIR_ARIEL})
+target_link_libraries(${EXE_NAME} PUBLIC ${LINK_LIBRARIES} ${LINK_LIBRARIES_EXTERN})
+target_compile_definitions(${EXE_NAME} PUBLIC ${IMPL_DEFINITIONS} ${IMPL_DEF_EXTERN})
+target_include_directories(${EXE_NAME} PUBLIC ${IMPL_DIRECTORIES} ${IMPL_DIR_EXTERN})
 
 if (CXX_EXTRA_LIBRARIES)
     target_link_libraries(${EXE_NAME} PUBLIC ${CXX_EXTRA_LIBRARIES})
@@ -257,7 +263,7 @@ target_compile_options(${EXE_NAME} PUBLIC "$<$<CONFIG:Release>:${ACTUAL_RELEASE_
 target_compile_options(${EXE_NAME} PUBLIC "$<$<CONFIG:Debug>:${ACTUAL_DEBUG_FLAGS};${CXX_EXTRA_FLAGS}>")
 
 target_link_options(${EXE_NAME} PUBLIC LINKER:${CXX_EXTRA_LINKER_FLAGS})
-target_link_options(${EXE_NAME} PUBLIC ${LINK_FLAGS} ${CXX_EXTRA_LINK_FLAGS} ${LINK_FLAGS_ARIEL})
+target_link_options(${EXE_NAME} PUBLIC ${LINK_FLAGS} ${CXX_EXTRA_LINK_FLAGS} ${LINK_FLAGS_EXTERN})
 
 # some models require the target to be already specified so they can finish their setup here
 # this only happens if the model.cmake definition contains the `setup_target` macro
