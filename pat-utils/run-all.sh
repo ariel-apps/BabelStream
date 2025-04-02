@@ -22,7 +22,7 @@ do
     for core_id in `seq 0 95`;
     do
         prefix="$core_id,$run_id,1,"
-        numactl --physcpubind=$core_id ./omp-stream --csv -n 100 -s $size | tail -n 5 | while read line; do echo "$prefix$line"; done
+        numactl --physcpubind=$core_id ../build/omp-stream --csv -n 100 -s $size | tail -n 5 | while read line; do echo "$prefix$line"; done
         count=$((count+1))
     done
 done

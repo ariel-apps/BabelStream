@@ -12,6 +12,10 @@
 #include "arielapi.h"
 #endif
 
+#ifdef USE_PAPI
+#include <papi.h>
+#endif
+
 #ifndef ALIGNMENT
 #define ALIGNMENT (2*1024*1024) // 2MB
 #endif
@@ -58,6 +62,19 @@ OMPStream<T>::~OMPStream()
 template <class T>
 void OMPStream<T>::init_arrays(T initA, T initB, T initC)
 {
+
+#ifdef USE_PAPI
+  int retval = PAPI_library_init(PAPI_VER_CURRENT);
+  if (retval != PAPI_VER_CURRENT) {
+    fprintf(stderr, "PAPI library initialization error!\n");
+    exit(1);
+  }
+  retval = PAPI_thread_init((unsigned long (*)(void))(omp_get_thread_num));
+  if (retval != PAPI_OK) {
+	  fprintf(stderr, "PAPI thread init error!\n");
+	  exit(1);
+  }
+#endif
   int array_size = this->array_size;
 #ifdef OMP_TARGET_GPU
   T *a = this->a;
@@ -117,15 +134,74 @@ void OMPStream<T>::copy()
   T *c = this->c;
   #pragma omp target teams distribute parallel for simd
 #else
-  #pragma omp parallel for
+  #pragma omp parallel
+  {
+#ifdef USE_PAPI
+  // Create an event set
+  int event_set = PAPI_NULL;
+  long long values[1];
+  int retval = PAPI_create_eventset(&event_set);
+  if (retval != PAPI_OK) {
+	  fprintf(stderr, "PAPI create event set error!\n");
+	  exit(1);
+  }
+
+  // Add the L1D cache read event to the event set
+  //retval = PAPI_add_named_event(event_set, "perf::PERF_COUNT_HW_CACHE_L1D:READ");
+  retval = PAPI_add_named_event(event_set, "perf::L1-DCACHE-LOADS:u=1:k=0");
+  if (retval != PAPI_OK) {
+	  fprintf(stderr, "PAPI add event error!\n");
+	  exit(1);
+  }
+
+  // Start counting the event
+  retval = PAPI_start(event_set);
+  if (retval != PAPI_OK) {
+	  fprintf(stderr, "PAPI start counters error!\n");
+	  exit(1);
+  }
+
+#endif
+
+  #pragma omp for
 #endif
   for (int i = 0; i < array_size; i++)
   {
     c[i] = a[i];
   }
+#ifndef OMP_TARGET_GPU
+#ifdef USE_PAPI
+  // Stop counting the event
+  retval = PAPI_stop(event_set, values);
+  if (retval != PAPI_OK) {
+	  fprintf(stderr, "PAPI stop counters error!\n");
+	  exit(1);
+  }
+
+  // Print the counter value
+#pragma omp critical
+  {
+  printf("L1D cache reads: %lld\n", values[0]);
+  }
+
+  // Cleanup
+  retval = PAPI_cleanup_eventset(event_set);
+  if (retval != PAPI_OK) {
+	  fprintf(stderr, "PAPI cleanup event set error!\n");
+	  exit(1);
+  }
+
+  retval = PAPI_destroy_eventset(&event_set);
+  if (retval != PAPI_OK) {
+	  fprintf(stderr, "PAPI destroy event set error!\n");
+	  exit(1);
+  }
+#endif
+  }
+#endif
   #if defined(OMP_TARGET_GPU) && defined(_CRAYC)
   // If using the Cray compiler, the kernels do not block, so this update forces
-  // a small copy to ensure blocking so that timing is correct
+  // a small copyeto ensure blocking so that timing is correct
   #pragma omp target update from(a[0:0])
   #endif
 
@@ -133,6 +209,7 @@ void OMPStream<T>::copy()
   ariel_disable();
   ariel_output_stats();
 #endif
+
 
 }
 
